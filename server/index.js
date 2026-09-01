@@ -1,85 +1,132 @@
 import "dotenv/config"
 import express from "express"
 import cors from "cors"
-import { GoogleGenAI } from "@google/genai"
+import Groq from "groq-sdk"
 
 const app = express()
 const port = Number(process.env.AI_PORT || 3001)
 
 app.use(cors())
-app.use(express.json({ limit: "15mb" }))
+app.use(express.json({ limit: "30mb" }))
 
-function parseDataUrl(value) {
-  const match = String(value || "").match(/^data:(.+?);base64,(.+)$/)
-  if (!match) return null
-  return { mimeType: match[1], data: match[2] }
-}
+const model = process.env.GROQ_MODEL || "qwen/qwen3.6-27b"
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, geminiConfigured: Boolean(process.env.GEMINI_API_KEY) })
+  res.json({
+    ok: true,
+    provider: "Groq",
+    model,
+    groqConfigured: Boolean(process.env.GROQ_API_KEY),
+  })
 })
 
 app.post("/api/analyze", async (req, res) => {
-  console.log("Received Gemini analysis request")
+  console.log("Received Groq/Qwen analysis request")
+
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(503).json({ error: "Gemini is not configured on the server." })
+    if (!process.env.GROQ_API_KEY) {
+      return res.status(503).json({ error: "Groq is not configured. Add GROQ_API_KEY to .env." })
     }
 
     const images = Array.isArray(req.body?.images) ? req.body.images.slice(0, 4) : []
     const hint = String(req.body?.hint || "").slice(0, 2000)
-    if (!images.length) return res.status(400).json({ error: "At least one image is required." })
 
-    const imageParts = images.map(parseDataUrl).filter(Boolean)
-    if (!imageParts.length) return res.status(400).json({ error: "Invalid image data." })
+    if (!images.length) {
+      return res.status(400).json({ error: "At least one image is required." })
+    }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-    const prompt = `You analyze lost-and-found item photos for a campus application. Return only JSON matching this schema. Identify visible item properties conservatively. Do not identify people. If an image mainly contains a person, face, explicit content, or is unrelated to a lost/found item, set moderation.approved to false. User hint: ${hint}`
+    const validImages = images.filter((value) =>
+      /^data:image\/(png|jpe?g|webp);base64,/i.test(String(value || ""))
+    )
 
-    const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      contents: [{
-        role: "user",
-        parts: [
-          { text: prompt },
-          ...imageParts.map((image) => ({ inlineData: image }))
-        ]
-      }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            category: { type: "string" },
-            item: { type: "string" },
-            color: { type: "string" },
-            brand: { type: "string" },
-            material: { type: "string" },
-            characteristics: { type: "array", items: { type: "string" } },
-            confidence: { type: "number" },
-            description: { type: "string" },
-            moderation: {
-              type: "object",
-              properties: {
-                approved: { type: "boolean" },
-                reason: { type: "string" },
-                flags: { type: "array", items: { type: "string" } }
-              },
-              required: ["approved", "flags"]
-            }
-          },
-          required: ["category", "item", "color", "characteristics", "confidence", "description", "moderation"]
-        }
-      }
+    if (!validImages.length) {
+      return res.status(400).json({ error: "Upload valid PNG, JPG, or WEBP images." })
+    }
+
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+
+    const prompt = `Analyze these lost-and-found item photos for a VIT Chennai campus application.
+
+Return ONLY a valid JSON object with exactly these top-level fields:
+{
+  "category": "string",
+  "item": "string",
+  "color": "string",
+  "brand": "string or empty string",
+  "material": "string or empty string",
+  "characteristics": ["short visible feature"],
+  "confidence": 0,
+  "description": "short factual description",
+  "moderation": {
+    "approved": true,
+    "reason": "short reason",
+    "flags": ["string"]
+  }
+}
+
+Rules:
+- Identify only what is reasonably visible in the uploaded images.
+- Do not identify or name people.
+- Do not infer sensitive personal information.
+- If the image does not clearly show a lost/found item, set moderation.approved to false.
+- Keep the description concise and useful for matching the item later.
+- confidence must be a number from 0 to 100.
+- characteristics should contain 0 to 6 concise visible features.
+- User-provided hint: ${hint || "None"}`
+
+    const completion = await groq.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: "You are a precise visual item analysis assistant. Output valid JSON only.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            ...validImages.map((url) => ({
+              type: "image_url",
+              image_url: { url },
+            })),
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      reasoning_effort: "none",
+      temperature: 0.2,
+      max_completion_tokens: 1000,
     })
 
-    const text = response.text
-    if (!text) throw new Error("Gemini returned an empty response.")
-    res.json(JSON.parse(text))
+    const text = completion.choices[0]?.message?.content
+    if (!text) throw new Error("Groq returned an empty analysis.")
+
+    const parsed = JSON.parse(text)
+
+    res.json({
+      category: String(parsed.category || "Unknown"),
+      item: String(parsed.item || "Item"),
+      color: String(parsed.color || "Unknown"),
+      brand: String(parsed.brand || ""),
+      material: String(parsed.material || ""),
+      characteristics: Array.isArray(parsed.characteristics) ? parsed.characteristics.slice(0, 6).map(String) : [],
+      confidence: Math.max(0, Math.min(100, Number(parsed.confidence) || 0)),
+      description: String(parsed.description || ""),
+      moderation: {
+        approved: Boolean(parsed.moderation?.approved),
+        reason: parsed.moderation?.reason ? String(parsed.moderation.reason) : undefined,
+        flags: Array.isArray(parsed.moderation?.flags) ? parsed.moderation.flags.map(String) : [],
+      },
+    })
   } catch (error) {
-    console.error("Gemini analysis error:", error?.message || error)
-    res.status(500).json({ error: error?.message || "AI analysis failed. Please try again." })
+    console.error("Groq/Qwen analysis error:", error?.message || error)
+    res.status(500).json({
+      error: error?.message || "Groq/Qwen analysis failed. Please try again.",
+    })
   }
 })
 
-app.listen(port, () => console.log(`AI server running on http://localhost:${port}`))
+app.listen(port, () => {
+  console.log(`AI server running on http://localhost:${port}`)
+  console.log(`AI provider: Groq | Model: ${model}`)
+})
