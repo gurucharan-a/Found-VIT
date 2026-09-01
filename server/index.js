@@ -20,6 +20,7 @@ app.get("/api/health", (_req, res) => {
 })
 
 app.post("/api/analyze", async (req, res) => {
+  console.log("Received Gemini analysis request")
   try {
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({ error: "Gemini is not configured on the server." })
@@ -36,7 +37,7 @@ app.post("/api/analyze", async (req, res) => {
     const prompt = `You analyze lost-and-found item photos for a campus application. Return only JSON matching this schema. Identify visible item properties conservatively. Do not identify people. If an image mainly contains a person, face, explicit content, or is unrelated to a lost/found item, set moderation.approved to false. User hint: ${hint}`
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
       contents: [{
         role: "user",
         parts: [
@@ -76,8 +77,8 @@ app.post("/api/analyze", async (req, res) => {
     if (!text) throw new Error("Gemini returned an empty response.")
     res.json(JSON.parse(text))
   } catch (error) {
-    console.error("Gemini analysis error:", error)
-    res.status(500).json({ error: "AI analysis failed. Please try again." })
+    console.error("Gemini analysis error:", error?.message || error)
+    res.status(500).json({ error: error?.message || "AI analysis failed. Please try again." })
   }
 })
 
