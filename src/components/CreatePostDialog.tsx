@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { X, Upload, Sparkles, ShieldAlert, ShieldCheck, Loader2, Image as ImageIcon, AlertTriangle } from "lucide-react"
+import { X, Upload, Sparkles, ShieldAlert, ShieldCheck, Loader2, Image as ImageIcon, AlertTriangle, Send, MapPin } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,11 @@ import type { Post, PostType } from "@/types"
 import { analyzeImages } from "@/services/gemini"
 import { CURRENT_USER } from "@/data/samplePosts"
 
-export function CreatePostDialog({ open, onOpenChange, onCreate }: { open:boolean; onOpenChange:(v:boolean)=>void; onCreate:(p:Post)=>void }) {
+export function CreatePostDialog({ open, onOpenChange, onCreate }: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onCreate: (p: Post) => void
+}) {
   const [type, setType] = useState<PostType>("found")
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -33,191 +37,356 @@ export function CreatePostDialog({ open, onOpenChange, onCreate }: { open:boolea
   }, [previews])
 
   const reset = () => {
-    setTitle(""); setDescription(""); setLocation(""); setFiles([]); setPreviews([]); setAnalysis(null); setModeration(null); setBase64s([]); setProgress(""); setAnalyzing(false)
+    setTitle("")
+    setDescription("")
+    setLocation("")
+    setFiles([])
+    setPreviews([])
+    setAnalysis(null)
+    setModeration(null)
+    setBase64s([])
+    setProgress("")
+    setAnalyzing(false)
   }
 
   const handleFiles = async (fl: FileList | null) => {
     if (!fl) return
-    const arr = Array.from(fl).slice(0,4)
+    const arr = Array.from(fl).slice(0, 4)
     setFiles(arr)
-    const urls = arr.map(f=> URL.createObjectURL(f))
-    setPreviews(urls)
+    setPreviews(arr.map((file) => URL.createObjectURL(file)))
+
     const b64s: string[] = []
-    for (const f of arr) {
-      const b = await new Promise<string>((res)=>{
-        const r=new FileReader(); r.onload=()=>res(r.result as string); r.readAsDataURL(f)
+    for (const file of arr) {
+      const data = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.readAsDataURL(file)
       })
-      b64s.push(b)
+      b64s.push(data)
     }
+
     setBase64s(b64s)
-    setAnalysis(null); setModeration(null)
+    setAnalysis(null)
+    setModeration(null)
+  }
+
+  const removeImage = (index: number) => {
+    const nextFiles = [...files]
+    const nextPreviews = [...previews]
+    const nextBase64s = [...base64s]
+    const removed = nextPreviews[index]
+
+    nextFiles.splice(index, 1)
+    nextPreviews.splice(index, 1)
+    nextBase64s.splice(index, 1)
+
+    if (removed?.startsWith("blob:")) URL.revokeObjectURL(removed)
+
+    setFiles(nextFiles)
+    setPreviews(nextPreviews)
+    setBase64s(nextBase64s)
+    setAnalysis(null)
+    setModeration(null)
   }
 
   const runAnalysis = async () => {
     if (!files.length) return
     setAnalyzing(true)
+
     try {
-      const { analysis: a, moderation: m } = await analyzeImages({ files, base64s, hint: title+" "+description, onProgress: setProgress })
-      setAnalysis(a); setModeration(m); setProgress("")
-    } catch (e:any) {
-      setProgress(e.message)
-    } finally { setAnalyzing(false) }
+      const result = await analyzeImages({
+        files,
+        base64s,
+        hint: title + " " + description,
+        onProgress: setProgress,
+      })
+      setAnalysis(result.analysis)
+      setModeration(result.moderation)
+      setProgress("")
+    } catch (error: any) {
+      setProgress(error.message)
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
-  // Allow posting even when AI analysis is unavailable; moderation is optional.
-  const canPost = Boolean(title.trim() && description.trim() && location && previews.length > 0)
+  const canPost = Boolean(
+    title.trim() &&
+    description.trim() &&
+    location &&
+    previews.length > 0
+  )
 
   const handlePost = () => {
-    const locLabel = VIT_LOCATIONS.find(l=>l.id===location)?.label ?? location
+    if (!canPost) return
+
+    const locLabel =
+      VIT_LOCATIONS.find((item) => item.id === location)?.label ?? location
+
     const newPost: Post = {
       id: Date.now().toString(),
-      type, title: title.trim(), description: description.trim(),
-      // Persist data URLs so posts survive re-renders and localStorage reloads.
+      type,
+      title: title.trim(),
+      description: description.trim(),
       images: base64s.length ? base64s : previews,
-      location, locationLabel: locLabel,
+      location,
+      locationLabel: locLabel,
       createdAt: new Date().toISOString(),
-      author: { name: CURRENT_USER.name, handle: CURRENT_USER.handle, avatar: CURRENT_USER.avatar },
+      author: {
+        name: CURRENT_USER.name,
+        handle: CURRENT_USER.handle,
+        avatar: CURRENT_USER.avatar,
+      },
       status: "open",
       analysis: analysis ?? undefined,
       moderation: moderation ?? undefined,
     }
+
+    // App.tsx immediately inserts this post at the start of the card grid.
     onCreate(newPost)
     reset()
     onOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v)=>{ if(!v) reset(); onOpenChange(v)}}>
-      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b bg-muted/20">
-          <DialogTitle className="flex items-center gap-2 text-xl"><span className="h-8 w-8 rounded-lg bg-primary text-white grid place-items-center"><Upload className="h-4 w-4"/></span> Create Post</DialogTitle>
-          <DialogDescription>Upload multiple images — Gemini Vision will analyze & moderate before posting. VIT location is required.</DialogDescription>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) reset()
+        onOpenChange(value)
+      }}
+    >
+      <DialogContent className="w-[calc(100%-2rem)] max-w-[1180px] p-0 gap-0 overflow-hidden">
+        <DialogHeader className="p-5 sm:p-6 pb-4 border-b bg-muted/20">
+          <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl">
+            <span className="h-10 w-10 rounded-xl bg-primary text-white grid place-items-center">
+              <Upload className="h-5 w-5" />
+            </span>
+            Create Post
+          </DialogTitle>
+          <DialogDescription>
+            Upload item images, add the VIT Chennai location, then post directly to the feed.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="p-6 space-y-5 max-h-[72vh] overflow-y-auto">
-          <Tabs value={type} onValueChange={v=>setType(v as PostType)}>
-            <TabsList className="w-full grid grid-cols-2">
-              <TabsTrigger value="found">🎉 I Found Something</TabsTrigger>
-              <TabsTrigger value="lost">😢 I Lost Something</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          {/* Image upload */}
-          <div>
-            <Label>Images (up to 4) *</Label>
-            <div className="mt-2">
-              {previews.length===0 ? (
-                <label className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed bg-muted/20 p-8 cursor-pointer hover:bg-muted/30 transition">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 grid place-items-center"><ImageIcon className="h-6 w-6 text-primary"/></div>
-                  <div className="text-sm font-medium">Click to upload or drag & drop</div>
-                  <div className="text-xs text-muted-foreground">PNG, JPG up to 10MB each</div>
-                  <Input type="file" accept="image/*" multiple className="hidden" onChange={e=>handleFiles(e.target.files)} />
-                  <input type="file" accept="image/*" multiple className="hidden" id="hidden-file-input" onChange={e=>handleFiles(e.target.files)} />
-                </label>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {previews.map((src,i)=>(
-                    <div key={i} className="relative group aspect-square rounded-xl overflow-hidden border bg-muted">
-                      <img src={src} className="w-full h-full object-cover" alt={`preview ${i}`} />
-                      <button onClick={()=>{
-                        const nf=[...files]; const np=[...previews]; const nb=[...base64s];
-                        nf.splice(i,1); np.splice(i,1); nb.splice(i,1);
-                        setFiles(nf); setPreviews(np); setBase64s(nb); setAnalysis(null); setModeration(null)
-                      }} className="absolute top-1.5 right-1.5 h-7 w-7 rounded-full bg-black/60 text-white grid place-items-center opacity-0 group-hover:opacity-100 transition"><X className="h-4 w-4"/></button>
+        <div className="grid lg:grid-cols-[1.05fr_1fr] max-h-[70vh] overflow-y-auto">
+          {/* LEFT: images and AI analysis */}
+          <div className="p-5 sm:p-6 border-b lg:border-b-0 lg:border-r space-y-5">
+            <div>
+              <Label>Images (up to 4) *</Label>
+              <div className="mt-2">
+                {previews.length === 0 ? (
+                  <label className="flex min-h-56 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed bg-muted/20 p-8 cursor-pointer hover:bg-muted/30 transition">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 grid place-items-center">
+                      <ImageIcon className="h-6 w-6 text-primary" />
                     </div>
-                  ))}
-                  {previews.length<4 && (
-                    <label className="aspect-square rounded-xl border-2 border-dashed grid place-items-center cursor-pointer bg-muted/20 hover:bg-muted/30">
-                      <PlusIcon />
-                      <Input type="file" accept="image/*" multiple className="hidden" onChange={e=>handleFiles(e.target.files)} />
-                    </label>
+                    <div className="text-sm font-medium">Click to upload images</div>
+                    <div className="text-xs text-muted-foreground">PNG or JPG, up to 4 images</div>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(event) => handleFiles(event.target.files)}
+                    />
+                  </label>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {previews.map((src, index) => (
+                      <div key={src} className="relative group aspect-[4/3] rounded-xl overflow-hidden border bg-muted">
+                        <img src={src} className="w-full h-full object-cover" alt={"preview " + (index + 1)} />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/60 text-white grid place-items-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
+                          aria-label="Remove image"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {previews.length < 4 && (
+                      <label className="aspect-[4/3] rounded-xl border-2 border-dashed grid place-items-center cursor-pointer bg-muted/20 hover:bg-muted/30">
+                        <div className="text-center text-primary">
+                          <div className="text-3xl leading-none">+</div>
+                          <div className="text-sm font-medium mt-1">Add more images</div>
+                        </div>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(event) => handleFiles(event.target.files)}
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border bg-card p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 font-semibold">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Gemini Vision Analysis
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={!previews.length || analyzing}
+                  onClick={runAnalysis}
+                  className="rounded-full"
+                >
+                  {analyzing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Analyzing…
+                    </>
+                  ) : (
+                    "Analyze Images"
+                  )}
+                </Button>
+              </div>
+
+              {progress && (
+                <p className="text-xs text-muted-foreground mt-3 animate-pulse">{progress}</p>
+              )}
+
+              {moderation && !moderation.approved && (
+                <div className="mt-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 p-3 flex gap-3">
+                  <ShieldAlert className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-sm font-semibold text-red-700 dark:text-red-400">Upload rejected</div>
+                    <div className="text-sm text-red-600 dark:text-red-300/80">
+                      {moderation.reason ?? "Failed moderation checks."}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {analysis && (
+                <div className="mt-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                    <ShieldCheck className="h-4 w-4" />
+                    {moderation?.approved ? "Approved — ready to post" : "Analysis complete"}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
+                    <Info label="Category" value={analysis.category} />
+                    <Info label="Item" value={analysis.item} />
+                    <Info label="Color" value={analysis.color} />
+                    <Info label="Confidence" value={analysis.confidence + "%"} />
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {analysis.characteristics?.map((item: string) => (
+                      <Badge key={item} variant="secondary">{item}</Badge>
+                    ))}
+                  </div>
+
+                  {analysis.description && (
+                    <p className="text-sm text-muted-foreground mt-3">{analysis.description}</p>
                   )}
                 </div>
               )}
-              {/* quick replace tip */}
-              <p className="text-xs text-muted-foreground mt-2">💡 Tip: Put your images in <code className="bg-muted px-1 rounded">public/images/</code> and reference as <code className="bg-muted px-1 rounded">/images/sample-X.jpg</code> in samplePosts.ts for demo data.</p>
             </div>
+
+            {moderation && !moderation.approved && (
+              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-xl p-3">
+                <AlertTriangle className="h-4 w-4" />
+                You can replace the image and analyze it again.
+              </div>
+            )}
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          {/* RIGHT: post details */}
+          <div className="p-5 sm:p-6 space-y-5">
             <div>
-              <Label>VIT Location *</Label>
+              <Label>Post Type *</Label>
+              <Tabs value={type} onValueChange={(value) => setType(value as PostType)} className="mt-2">
+                <TabsList className="w-full grid grid-cols-2">
+                  <TabsTrigger value="found">I Found Something</TabsTrigger>
+                  <TabsTrigger value="lost">I Lost Something</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            <div>
+              <Label>VIT Chennai Location *</Label>
               <Select value={location} onValueChange={setLocation}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select location" /></SelectTrigger>
+                <SelectTrigger className="mt-2">
+                  <MapPin className="h-4 w-4 mr-2 text-primary" />
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
                 <SelectContent>
-                  {VIT_LOCATIONS.map(l=> <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
+                  {VIT_LOCATIONS.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+
             <div>
               <Label>Title *</Label>
-              <Input value={title} onChange={e=>setTitle(e.target.value)} placeholder={type==="found"?"Found — Black Casio Watch":"Lost — Blue Hydro Flask"} className="mt-1.5" />
+              <Input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Example: Pink backpack"
+                className="mt-2"
+              />
             </div>
-          </div>
 
-          <div>
-            <Label>Description *</Label>
-            <Textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Add details that help matching — color, brand, where exactly, distinguishing marks..." rows={3} className="mt-1.5" />
-          </div>
-
-          {/* Analyze */}
-          <div className="rounded-2xl border bg-card p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-semibold text-sm"><Sparkles className="h-4 w-4 text-primary"/> Gemini Vision Analysis</div>
-              <Button size="sm" variant="secondary" disabled={!previews.length || analyzing} onClick={runAnalysis} className="rounded-full">
-                {analyzing? <><Loader2 className="h-4 w-4 animate-spin"/> Analyzing…</>: "Analyze Images"}
-              </Button>
+            <div>
+              <Label>Description *</Label>
+              <Textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Describe the item, color, brand, and any distinguishing details..."
+                rows={5}
+                className="mt-2"
+              />
             </div>
-            {progress && <p className="text-xs text-muted-foreground mt-2 animate-pulse">{progress}</p>}
-            {!analysis && !moderation && !analyzing && <p className="text-xs text-muted-foreground mt-2">Upload images & click Analyze. Moderation runs automatically.</p>}
 
-            {moderation && !moderation.approved && (
-              <div className="mt-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 p-3 flex gap-3">
-                <ShieldAlert className="h-5 w-5 text-red-600 shrink-0 mt-0.5"/>
-                <div>
-                  <div className="text-sm font-semibold text-red-700 dark:text-red-400">Upload rejected</div>
-                  <div className="text-sm text-red-600 dark:text-red-300/80">{moderation.reason ?? "Failed moderation checks."}</div>
-                  <div className="flex gap-1.5 mt-2 flex-wrap">{moderation.flags.map((f:string)=><Badge key={f} variant="destructive" className="text-xs">{f}</Badge>)}</div>
-                  <p className="text-xs text-muted-foreground mt-2">Please replace images with a clear photo of the item only (no people, memes, or unrelated content).</p>
-                </div>
-              </div>
-            )}
-
-            {analysis && moderation?.approved && (
-              <div className="mt-3">
-                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 p-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400"><ShieldCheck className="h-4 w-4"/> Approved — ready to post</div>
-                  <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-                    <div className="bg-white dark:bg-zinc-900 rounded-lg p-2.5 border"><div className="text-muted-foreground">Category</div><div className="font-semibold">{analysis.category}</div></div>
-                    <div className="bg-white dark:bg-zinc-900 rounded-lg p-2.5 border"><div className="text-muted-foreground">Item</div><div className="font-semibold">{analysis.item}</div></div>
-                    <div className="bg-white dark:bg-zinc-900 rounded-lg p-2.5 border"><div className="text-muted-foreground">Color</div><div className="font-semibold">{analysis.color}</div></div>
-                    <div className="bg-white dark:bg-zinc-900 rounded-lg p-2.5 border"><div className="text-muted-foreground">Confidence</div><div className="font-bold text-primary">{analysis.confidence}%</div></div>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {analysis.characteristics.map((c:string)=><Badge key={c} variant="secondary" className="text-xs">{c}</Badge>)}
-                    {analysis.brand && <Badge variant="outline" className="text-xs bg-white dark:bg-zinc-900">{analysis.brand}</Badge>}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">{analysis.description}</p>
-                  <div className="mt-2 h-2 bg-white dark:bg-zinc-800 rounded-full overflow-hidden border">
-                    <div className="h-full bg-emerald-500" style={{width:`${analysis.confidence}%`}}/>
-                  </div>
-                </div>
-              </div>
-            )}
+            <p className="text-xs text-muted-foreground text-right">* Required fields</p>
           </div>
-
-          {moderation && !moderation.approved && (
-            <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-xl p-3"><AlertTriangle className="h-4 w-4"/> Fix the images and re-analyze before posting.</div>
-          )}
         </div>
 
-        <div className="p-4 border-t bg-muted/20 flex gap-3 justify-end">
-          <Button variant="outline" onClick={()=>onOpenChange(false)} className="rounded-full">Cancel</Button>
-          <Button size="sm" disabled={!canPost} onClick={handlePost} className="rounded-full font-semibold px-4">Post</Button>
+        {/* Always visible footer: Post button is deliberately on the bottom-left. */}
+        <div className="p-4 sm:p-5 border-t bg-muted/20 flex items-center gap-3 justify-start">
+          <Button
+            type="button"
+            disabled={!canPost}
+            onClick={handlePost}
+            className="rounded-full font-semibold px-5"
+          >
+            <Send className="h-4 w-4" />
+            Post
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="rounded-full"
+          >
+            Cancel
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
   )
 }
 
-function PlusIcon(){ return <div className="text-center"><div className="h-8 w-8 rounded-full bg-muted grid place-items-center mx-auto"><span className="text-xl leading-none">+</span></div><div className="text-xs font-medium mt-1">Add</div></div>}
+function Info({ label, value }: { label: string; value: string | number | undefined }) {
+  return (
+    <div className="rounded-lg border bg-background/70 p-2.5">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="font-semibold mt-0.5">{value ?? "—"}</div>
+    </div>
+  )
+}
