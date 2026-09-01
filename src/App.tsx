@@ -88,7 +88,7 @@ export default function App() {
           <div className="relative">
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1 rounded-full text-xs font-semibold tracking-wide"><Sparkles className="h-3.5 w-3.5"/> Powered by Gemini Vision</div>
             <h1 className="font-display font-extrabold text-[28px] sm:text-[36px] leading-none mt-3">Lost something at VIT?<br/>Find it in seconds.</h1>
-            <p className="text-white/80 mt-3 max-w-[560px] text-sm sm:text-[15px] leading-relaxed">Hyperlocal feed for VIT Vellore. AI tags every item, moderates uploads, and matches your description across campus locations.</p>
+            <p className="text-white/80 mt-3 max-w-[560px] text-sm sm:text-[15px] leading-relaxed">Hyperlocal feed for VIT Chennai. AI tags every item, moderates uploads, and matches your description across campus locations.</p>
 
             <div className="flex flex-wrap gap-3 mt-5">
               <div className="flex-1 min-w-[280px] max-w-[520px] relative">
@@ -102,7 +102,7 @@ export default function App() {
               <span className="bg-white text-zinc-900 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5"/>{stats.total} active posts</span>
               <span className="bg-white/15 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur">{stats.found} found</span>
               <span className="bg-white/15 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur">{stats.lost} lost</span>
-              <span className="bg-white/15 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur hidden sm:inline-flex items-center gap-1"><MapPin className="h-3 w-3"/> 20 VIT locations</span>
+              <span className="bg-white/15 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur hidden sm:inline-flex items-center gap-1"><MapPin className="h-3 w-3"/> 26 VIT Chennai locations</span>
             </div>
           </div>
         </div>
