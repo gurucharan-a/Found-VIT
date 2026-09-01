@@ -169,9 +169,9 @@ export function CreatePostDialog({ open, onOpenChange, onCreate }: {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid lg:grid-cols-[1.05fr_1fr] max-h-[70vh] overflow-y-scroll overscroll-contain scrollbar-thin">
+        <div className="grid lg:grid-cols-[1.05fr_1fr] max-h-[70vh]">
           {/* LEFT: images and AI analysis */}
-          <div className="p-5 sm:p-6 border-b lg:border-b-0 lg:border-r space-y-5">
+          <div className="p-5 sm:p-6 border-b lg:border-b-0 lg:border-r space-y-5 max-h-[70vh] overflow-y-scroll overscroll-contain pr-4">
             <div>
               <Label>Images (up to 4) *</Label>
               <div className="mt-2">
@@ -357,7 +357,7 @@ export function CreatePostDialog({ open, onOpenChange, onCreate }: {
         </div>
 
         {/* Always visible footer: Post button is deliberately on the bottom-left. */}
-        <div className="p-4 sm:p-5 border-t bg-muted/20 flex items-center gap-3 justify-start">
+        <div className="p-4 sm:p-5 border-t bg-muted/20 flex items-center gap-3 justify-end">
           <Button
             type="button"
             disabled={!canPost}
