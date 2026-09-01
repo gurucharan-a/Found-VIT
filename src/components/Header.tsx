@@ -17,7 +17,7 @@ export function Header({ search, setSearch, locationFilter, setLocationFilter, o
             <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center text-white font-extrabold text-sm tracking-tighter">F@V</div>
             <div className="hidden sm:block">
               <div className="font-display font-extrabold leading-none text-[18px] tracking-tight">Found@VIT</div>
-              <div className="text-[11px] text-muted-foreground -mt-0.5 font-medium tracking-wide">VIT Vellore • Lost & Found</div>
+              <div className="text-[11px] text-muted-foreground -mt-0.5 font-medium tracking-wide">VIT Chennai • Lost & Found</div>
             </div>
             <div className="sm:hidden font-display font-extrabold text-[16px]">Found@VIT</div>
           </div>
@@ -25,7 +25,7 @@ export function Header({ search, setSearch, locationFilter, setLocationFilter, o
           {/* Search */}
           <div className="flex-1 max-w-[560px] relative hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={e=>setSearch(e.target.value)} onFocus={onSearchFocus} placeholder="Describe what you lost — e.g. 'black titan watch SJT'" className="pl-9 pr-10 h-10 rounded-full bg-muted/50 border-0 focus-visible:ring-1" />
+            <Input value={search} onChange={e=>setSearch(e.target.value)} onFocus={onSearchFocus} placeholder="Describe what you lost — e.g. 'black titan watch AB1'" className="pl-9 pr-10 h-10 rounded-full bg-muted/50 border-0 focus-visible:ring-1" />
             <span className="absolute right-2 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1 text-[11px] bg-primary text-primary-foreground px-2.5 py-1 rounded-full font-medium"><Sparkles className="h-3 w-3"/> AI Search</span>
           </div>
 
