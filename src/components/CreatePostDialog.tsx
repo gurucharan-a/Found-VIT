@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { VIT_LOCATIONS } from "@/data/locations"
 import type { Post, PostType } from "@/types"
-import { analyzeImages } from "@/services/gemini"
+import { analyzeImages } from "@/services/groq"
 import { CURRENT_USER } from "@/data/samplePosts"
 
 export function CreatePostDialog({ open, onOpenChange, onCreate }: {
@@ -230,7 +230,7 @@ export function CreatePostDialog({ open, onOpenChange, onCreate }: {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 font-semibold">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  Gemini Vision Analysis
+                  Groq + Qwen Vision Analysis
                 </div>
                 <Button
                   type="button"
