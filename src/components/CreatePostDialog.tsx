@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { X, Upload, Sparkles, ShieldAlert, ShieldCheck, Loader2, Image as ImageIcon, AlertTriangle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,12 @@ export function CreatePostDialog({ open, onOpenChange, onCreate }: { open:boolea
   const [analysis, setAnalysis] = useState<any>(null)
   const [moderation, setModeration] = useState<any>(null)
   const [base64s, setBase64s] = useState<string[]>([])
+
+  useEffect(() => {
+    return () => previews.forEach((url) => {
+      if (url.startsWith("blob:")) URL.revokeObjectURL(url)
+    })
+  }, [previews])
 
   const reset = () => {
     setTitle(""); setDescription(""); setLocation(""); setFiles([]); setPreviews([]); setAnalysis(null); setModeration(null); setBase64s([]); setProgress(""); setAnalyzing(false)
@@ -58,14 +64,16 @@ export function CreatePostDialog({ open, onOpenChange, onCreate }: { open:boolea
     } finally { setAnalyzing(false) }
   }
 
-  const canPost = title.trim() && description.trim() && location && previews.length>0 && moderation?.approved
+  // Allow posting even when AI analysis is unavailable; moderation is optional.
+  const canPost = Boolean(title.trim() && description.trim() && location && previews.length > 0)
 
   const handlePost = () => {
     const locLabel = VIT_LOCATIONS.find(l=>l.id===location)?.label ?? location
     const newPost: Post = {
       id: Date.now().toString(),
       type, title: title.trim(), description: description.trim(),
-      images: previews, // object URLs for demo (persisted as is)
+      // Persist data URLs so posts survive re-renders and localStorage reloads.
+      images: base64s.length ? base64s : previews,
       location, locationLabel: locLabel,
       createdAt: new Date().toISOString(),
       author: { name: CURRENT_USER.name, handle: CURRENT_USER.handle, avatar: CURRENT_USER.avatar },
