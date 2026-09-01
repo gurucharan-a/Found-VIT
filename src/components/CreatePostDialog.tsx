@@ -169,7 +169,7 @@ export function CreatePostDialog({ open, onOpenChange, onCreate }: {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid lg:grid-cols-[1.05fr_1fr] max-h-[70vh] overflow-y-auto">
+        <div className="grid lg:grid-cols-[1.05fr_1fr] max-h-[70vh] overflow-y-scroll overscroll-contain scrollbar-thin">
           {/* LEFT: images and AI analysis */}
           <div className="p-5 sm:p-6 border-b lg:border-b-0 lg:border-r space-y-5">
             <div>
