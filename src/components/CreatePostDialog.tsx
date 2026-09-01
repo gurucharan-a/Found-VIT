@@ -213,7 +213,7 @@ export function CreatePostDialog({ open, onOpenChange, onCreate }: { open:boolea
 
         <div className="p-4 border-t bg-muted/20 flex gap-3 justify-end">
           <Button variant="outline" onClick={()=>onOpenChange(false)} className="rounded-full">Cancel</Button>
-          <Button disabled={!canPost} onClick={handlePost} className="rounded-full font-semibold px-6">Post to Feed</Button>
+          <Button size="sm" disabled={!canPost} onClick={handlePost} className="rounded-full font-semibold px-4">Post</Button>
         </div>
       </DialogContent>
     </Dialog>
