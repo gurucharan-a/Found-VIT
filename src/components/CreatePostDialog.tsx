@@ -347,7 +347,7 @@ export function CreatePostDialog({ open, onOpenChange, onCreate }: {
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="Describe the item, color, brand, and any distinguishing details..."
-                rows={5}
+                rows={3}
                 className="mt-2"
               />
             </div>

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { SAMPLE_POSTS } from "@/data/samplePosts"
 import type { Post } from "@/types"
-import { scoreMatch } from "@/services/gemini"
+import { scoreMatch } from "@/services/groq";
 import { Sparkles, Search, Filter, TrendingUp, MapPin, Trash2, Info } from "lucide-react"
 
 const STORAGE_KEY = "foundvit_posts"
@@ -88,7 +88,7 @@ export default function App() {
           <div className="relative">
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1 rounded-full text-xs font-semibold tracking-wide"><Sparkles className="h-3.5 w-3.5"/> Powered by Gemini Vision</div>
             <h1 className="font-display font-extrabold text-[28px] sm:text-[36px] leading-none mt-3">Lost something at VIT?<br/>Find it in seconds.</h1>
-            <p className="text-white/80 mt-3 max-w-[560px] text-sm sm:text-[15px] leading-relaxed">Hyperlocal feed for VIT Vellore. AI tags every item, moderates uploads, and matches your description across campus locations.</p>
+            <p className="text-white/80 mt-3 max-w-[560px] text-sm sm:text-[15px] leading-relaxed">Hyperlocal feed for VIT Chennai. AI tags every item, moderates uploads, and matches your description across campus locations.</p>
 
             <div className="flex flex-wrap gap-3 mt-5">
               <div className="flex-1 min-w-[280px] max-w-[520px] relative">
@@ -141,19 +141,6 @@ export default function App() {
           {filtered.map(p=> <PostCard key={p.id} post={p} onContact={setContactPost as any} onView={setDetailPost as any} />)}
         </div>
 
-        {/* Info footer for drop-in images */}
-        <div className="mt-8 rounded-2xl border bg-card p-4 flex gap-3">
-          <Info className="h-5 w-5 text-primary shrink-0 mt-0.5"/>
-          <div className="text-sm leading-relaxed">
-            <span className="font-semibold">How to add your own images:</span> Drop files into <code className="bg-muted px-1.5 py-0.5 rounded text-xs">public/images/</code> then edit <code className="bg-muted px-1.5 py-0.5 rounded text-xs">src/data/samplePosts.ts</code> — change the <code className="bg-muted px-1.5 py-0.5 rounded text-xs">images: ["/images/sample-1.jpg"]</code> arrays. For Gemini, set <code className="bg-muted px-1.5 py-0.5 rounded text-xs">VITE_GEMINI_API_KEY</code> in <code className="bg-muted px-1.5 py-0.5 rounded text-xs">.env</code> (see <code className="bg-muted px-1.5 py-0.5 rounded text-xs">.env.example</code>). Without a key, a realistic mock runs so the demo stays functional.
-            <div className="flex gap-2 mt-3 flex-wrap">
-              <Badge variant="secondary" className="rounded-full">VIT locations: src/data/locations.ts</Badge>
-              <Badge variant="secondary" className="rounded-full">Gemini logic: src/services/gemini.ts</Badge>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center text-xs text-muted-foreground mt-6">Found@VIT • Demo frontend — data in localStorage • Built with React + Vite + Tailwind + shadcn/ui</div>
       </div>
 
       <CreatePostDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={(p)=> setPosts(prev=>[p, ...prev])} />
